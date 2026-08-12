@@ -1,4 +1,41 @@
-  const prefersReducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+const prefersReducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+
+  // Prefetch other pages the moment someone's finger/cursor lands on a nav
+  // link — by the time they actually tap/click, the page is often already
+  // sitting in the browser's cache, so navigation feels instant instead of
+  // showing a blank white screen while it loads over the network. This is
+  // what makes multi-page sites feel as snappy as a single-page app.
+  (function setupLinkPrefetch(){
+    const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (conn && (conn.saveData || /2g/.test(conn.effectiveType || ''))) return; // respect data-saver / slow connections
+    const prefetched = new Set();
+    function prefetch(href){
+      if (!href || prefetched.has(href)) return;
+      prefetched.add(href);
+      const link = document.createElement('link');
+      link.rel = 'prefetch';
+      link.href = href;
+      document.head.appendChild(link);
+    }
+    function isSameSiteHtmlLink(a){
+      if (!a || !a.href) return false;
+      if (a.origin !== window.location.origin) return false;
+      if (a.hasAttribute('download') || a.target === '_blank') return false;
+      return /\.html$/.test(a.pathname) || a.pathname === '/' ;
+    }
+    document.addEventListener('pointerenter', (e) => {
+      const a = e.target.closest && e.target.closest('a');
+      if (isSameSiteHtmlLink(a)) prefetch(a.href);
+    }, { capture: true, passive: true });
+    document.addEventListener('touchstart', (e) => {
+      const a = e.target.closest && e.target.closest('a');
+      if (isSameSiteHtmlLink(a)) prefetch(a.href);
+    }, { capture: true, passive: true });
+    document.addEventListener('focus', (e) => {
+      const a = e.target.closest && e.target.closest('a');
+      if (isSameSiteHtmlLink(a)) prefetch(a.href);
+    }, { capture: true, passive: true });
+  })();
 
   // Nav color transition on scroll (green hero -> white bar)
   const navHeader = document.querySelector('header.nav');
