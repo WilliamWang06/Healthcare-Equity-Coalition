@@ -1,5 +1,18 @@
 const prefersReducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
 
+  // Don't let the browser restore a scrolled-down position when navigating
+  // with back/forward — combined with the fade transition (below), a
+  // restored mid-page scroll position is what causes that "jump" feeling
+  // right after a page loads.
+  if ('scrollRestoration' in history) { history.scrollRestoration = 'manual'; }
+
+  function isSameSiteHtmlLink(a){
+    if (!a || !a.href) return false;
+    if (a.origin !== window.location.origin) return false;
+    if (a.hasAttribute('download') || a.target === '_blank') return false;
+    return /\.html$/.test(a.pathname) || a.pathname === '/' ;
+  }
+
   // Prefetch other pages the moment someone's finger/cursor lands on a nav
   // link — by the time they actually tap/click, the page is often already
   // sitting in the browser's cache, so navigation feels instant instead of
@@ -17,12 +30,6 @@ const prefersReducedMotionQuery = window.matchMedia('(prefers-reduced-motion: re
       link.href = href;
       document.head.appendChild(link);
     }
-    function isSameSiteHtmlLink(a){
-      if (!a || !a.href) return false;
-      if (a.origin !== window.location.origin) return false;
-      if (a.hasAttribute('download') || a.target === '_blank') return false;
-      return /\.html$/.test(a.pathname) || a.pathname === '/' ;
-    }
     document.addEventListener('pointerenter', (e) => {
       const a = e.target.closest && e.target.closest('a');
       if (isSameSiteHtmlLink(a)) prefetch(a.href);
@@ -36,6 +43,20 @@ const prefersReducedMotionQuery = window.matchMedia('(prefers-reduced-motion: re
       if (isSameSiteHtmlLink(a)) prefetch(a.href);
     }, { capture: true, passive: true });
   })();
+
+  // The page-crossfade (in styles.css) blends a snapshot of the page you're
+  // leaving into the new page. If you'd scrolled down before tapping a nav
+  // link, that snapshot shows the scrolled-down view fading into the new
+  // page's top — which reads as a jarring jump/bounce. Snapping instantly
+  // to the top the moment a nav link is tapped, before the browser starts
+  // the actual navigation, means the crossfade blends two "top of page"
+  // views instead, so it settles smoothly with no jump.
+  document.addEventListener('click', (e) => {
+    if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+    const a = e.target.closest && e.target.closest('a');
+    if (!isSameSiteHtmlLink(a)) return;
+    if (window.scrollY > 0) { window.scrollTo({ top: 0, left: 0, behavior: 'instant' }); }
+  }, { capture: true });
 
   // Nav color transition on scroll (green hero -> white bar)
   const navHeader = document.querySelector('header.nav');
@@ -112,6 +133,26 @@ const prefersReducedMotionQuery = window.matchMedia('(prefers-reduced-motion: re
     philadelphia: {
       label: 'Philadelphia, PA',
       orgs: ['University of Pennsylvania']
+    },
+    newhaven: {
+      label: 'New Haven, CT',
+      orgs: ['Nyera Ali, Yale University']
+    },
+    columbus: {
+      label: 'Columbus, OH',
+      orgs: ['Shreyas Gorthy, Ohio State University']
+    },
+    evanston: {
+      label: 'Evanston, IL',
+      orgs: ['Yasmine Sakr, Northwestern University']
+    },
+    stanford: {
+      label: 'Stanford, CA',
+      orgs: ['Gabriel Martinez, Stanford University']
+    },
+    losangeles: {
+      label: 'Los Angeles, CA',
+      orgs: ['Andrew Rahana, UCLA']
     }
   };
   const riMapInfo = document.getElementById('riMapInfo');
@@ -141,7 +182,7 @@ const prefersReducedMotionQuery = window.matchMedia('(prefers-reduced-motion: re
     document.querySelectorAll('.logo-tile').forEach(el => attachTilt(el, 9, 1.05));
     document.querySelectorAll('.founder-avatar').forEach(el => attachTilt(el, 12, 1.06));
     // Larger content cards get a subtler tilt — big rotation on a text-heavy card looks broken, not premium
-    document.querySelectorAll('.project-card, .involved-card, .leadership-card, .network-callout').forEach(el => attachTilt(el, 3.5, 1.015, 1000));
+    document.querySelectorAll('.project-card, .involved-card, .leadership-card').forEach(el => attachTilt(el, 3.5, 1.015, 1000));
   }
 
   // Partner tabs
